@@ -4,5 +4,7 @@ import (
 	"fmt"
 )
 
-var ERR_SERVER_CRASHED = fmt.Errorf("Server is crashed.")
-var ERR_NOT_LEADER = fmt.Errorf("Server is not the leader")
+var ErrServerCrashedUnreachable = fmt.Errorf("server is crashed or unreachable")
+var ErrServerCrashed = fmt.Errorf("server is crashed")
+var ErrNotLeader = fmt.Errorf("server is not the leader")
+var ErrMajorityDown = fmt.Errorf("majority of servers are down")

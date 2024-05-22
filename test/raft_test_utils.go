@@ -4,14 +4,15 @@ import (
 	context "context"
 	"cse224/proj5/pkg/surfstore"
 	"fmt"
-	"google.golang.org/grpc"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	"google.golang.org/grpc"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 type TestInfo struct {
@@ -78,7 +79,7 @@ func InitBlockStores(blockStoreAddrs []string) []*exec.Cmd {
 	blockCmdList := make([]*exec.Cmd, 0)
 	for _, addr := range blockStoreAddrs {
 		port := strings.Split(addr, ":")[1]
-		blockCmd := exec.Command("_bin/SurfstoreServerExec", "-d", "-s", "block", "-p", port, "-l")
+		blockCmd := exec.Command("_bin/SurfstoreServerExec", "-s", "block", "-p", port, "-l")
 		blockCmd.Stderr = os.Stderr
 		blockCmd.Stdout = os.Stdout
 		err := blockCmd.Start()
@@ -93,7 +94,7 @@ func InitBlockStores(blockStoreAddrs []string) []*exec.Cmd {
 
 func InitRaftServers(cfgPath string, cfg surfstore.RaftConfig) []*exec.Cmd {
 	cmdList := make([]*exec.Cmd, 0)
-	for idx, _ := range cfg.RaftAddrs {
+	for idx := range cfg.RaftAddrs {
 
 		cmd := exec.Command("_bin/SurfstoreRaftServerExec", "-f", cfgPath, "-i", strconv.Itoa(idx))
 		cmd.Stderr = os.Stderr
@@ -121,17 +122,19 @@ func CheckInternalState(isLeader *bool, term *int64, log []*surfstore.UpdateOper
 	if state == nil {
 		return false, fmt.Errorf("state is nil")
 	}
-	if isLeader != nil && *isLeader != state.IsLeader {
-		return false, fmt.Errorf("expected leader state %t, got %t", *isLeader, state.IsLeader)
+	if isLeader != nil && *isLeader != (state.Status == surfstore.ServerStatus_LEADER) {
+		return false, fmt.Errorf("expected leader state %t, got %d", *isLeader, state.Status)
 	}
+
 	if term != nil && *term != state.Term {
 		return false, fmt.Errorf("expected term %d, got %d", *term, state.Term)
 	}
+
 	if log != nil && !SameLog(log, state.Log) {
-		return false, fmt.Errorf("incorrect log")
+		return false, fmt.Errorf("expected log %v, got %v", log, state.Log)
 	}
 	if fileMetaMap != nil && !SameMeta(fileMetaMap, state.MetaMap.FileInfoMap) {
-		return false, fmt.Errorf("incorrect MetaStore state")
+		return false, fmt.Errorf("expected meta %v, got %v", fileMetaMap, state.MetaMap)
 	}
 
 	return true, nil

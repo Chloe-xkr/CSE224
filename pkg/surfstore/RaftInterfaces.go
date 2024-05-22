@@ -2,6 +2,7 @@ package surfstore
 
 import (
 	context "context"
+
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -14,6 +15,7 @@ type RaftInterface interface {
 type RaftTestingInterface interface {
 	GetInternalState(ctx context.Context, _ *emptypb.Empty) (*RaftInternalState, error)
 	Crash(ctx context.Context, _ *emptypb.Empty) (*Success, error)
+	MakeServerUnreachableFrom(ctx context.Context, servers *UnreachableFromServers) (*Success, error)
 	Restore(ctx context.Context, _ *emptypb.Empty) (*Success, error)
 }
 

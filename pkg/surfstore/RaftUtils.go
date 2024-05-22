@@ -7,6 +7,9 @@ import (
 	"log"
 	"os"
 	"sync"
+
+	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type RaftConfig struct {
@@ -33,19 +36,34 @@ func LoadRaftConfigFile(filename string) (cfg RaftConfig) {
 }
 
 func NewRaftServer(id int64, config RaftConfig) (*RaftSurfstore, error) {
-    // TODO Any initialization you need here
+	// TODO Any initialization you need here
+	conns := make([]*grpc.ClientConn, 0)
+	for _, addr := range config.RaftAddrs {
+		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return nil, err
+		}
+		conns = append(conns, conn)
+	}
 
-	isLeaderMutex := sync.RWMutex{}
-	isCrashedMutex := sync.RWMutex{}
+	serverStatusMutex := sync.RWMutex{}
+	raftStateMutex := sync.RWMutex{}
 
 	server := RaftSurfstore{
-		isLeader:       false,
-		isLeaderMutex:  &isLeaderMutex,
-		term:           0,
-		metaStore:      NewMetaStore(config.BlockAddrs),
-		log:            make([]*UpdateOperation, 0),
-		isCrashed:      false,
-		isCrashedMutex: &isCrashedMutex,
+		serverStatus:      ServerStatus_FOLLOWER,
+		serverStatusMutex: &serverStatusMutex,
+		term:              0,
+		metaStore:         NewMetaStore(config.BlockAddrs),
+		log:               make([]*UpdateOperation, 0),
+
+		id:          id,
+		commitIndex: -1,
+
+		unreachableFrom: make(map[int64]struct{}),
+		grpcServer:      grpc.NewServer(),
+		rpcConns:        conns,
+
+		raftStateMutex: &raftStateMutex,
 	}
 
 	return &server, nil
@@ -53,5 +71,5 @@ func NewRaftServer(id int64, config RaftConfig) (*RaftSurfstore, error) {
 
 // TODO Start up the Raft server and any services here
 func ServeRaftServer(server *RaftSurfstore) error {
-    panic("todo")
+	panic("todo")
 }

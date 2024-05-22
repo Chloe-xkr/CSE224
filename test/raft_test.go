@@ -2,8 +2,9 @@ package SurfTest
 
 import (
 	"cse224/proj5/pkg/surfstore"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	"testing"
+
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 func TestRaftSetLeader(t *testing.T) {
@@ -32,12 +33,12 @@ func TestRaftSetLeader(t *testing.T) {
 		}
 		if idx == leaderIdx {
 			// server should be the leader
-			if !state.IsLeader {
+			if state.Status != surfstore.ServerStatus_LEADER {
 				t.Fatalf("Server %d should be the leader", idx)
 			}
 		} else {
 			// server should not be the leader
-			if state.IsLeader {
+			if state.Status == surfstore.ServerStatus_LEADER {
 				t.Fatalf("Server %d should not be the leader", idx)
 			}
 		}
@@ -62,12 +63,12 @@ func TestRaftSetLeader(t *testing.T) {
 		}
 		if idx == leaderIdx {
 			// server should be the leader
-			if !state.IsLeader {
+			if state.Status != surfstore.ServerStatus_LEADER {
 				t.Fatalf("Server %d should be the leader", idx)
 			}
 		} else {
 			// server should not be the leader
-			if state.IsLeader {
+			if state.Status == surfstore.ServerStatus_LEADER {
 				t.Fatalf("Server %d should not be the leader", idx)
 			}
 		}
