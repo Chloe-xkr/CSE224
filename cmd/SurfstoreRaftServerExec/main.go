@@ -3,7 +3,7 @@ package main
 import (
 	"cse224/proj5/pkg/surfstore"
 	"flag"
-	"io/ioutil"
+	"io"
 	"log"
 )
 
@@ -18,7 +18,7 @@ func main() {
 	// Disable log outputs if debug flag is missing
 	if !(*debug) {
 		log.SetFlags(0)
-		log.SetOutput(ioutil.Discard)
+		log.SetOutput(io.Discard)
 	}
 
 	log.Fatal(startServer(*serverId, config))

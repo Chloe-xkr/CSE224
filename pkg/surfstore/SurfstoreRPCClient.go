@@ -18,8 +18,7 @@ func (surfClient *RPCClient) GetBlock(blockHash string, blockStoreAddr string, b
 		return err
 	}
 
-	// close the connection
-	return conn.Close()
+	panic("todo")
 }
 
 func (surfClient *RPCClient) PutBlock(block *Block, blockStoreAddr string, succ *bool) error {

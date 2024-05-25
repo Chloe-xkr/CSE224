@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -63,7 +63,7 @@ func main() {
 	// Disable log outputs if debug flag is missing
 	if !(*debug) {
 		log.SetFlags(0)
-		log.SetOutput(ioutil.Discard)
+		log.SetOutput(io.Discard)
 	}
 
 	log.Fatal(startServer(addr, strings.ToLower(*service), blockStoreAddrs))
@@ -75,11 +75,11 @@ func startServer(hostAddr string, serviceType string, blockStoreAddrs []string) 
 
 	// Register rpc services
 	if serviceType != "block" {
-
+		panic("todo")
 	}
 
 	if serviceType != "meta" {
-
+		panic("todo")
 	}
 
 	l, e := net.Listen("tcp", hostAddr)
