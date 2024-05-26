@@ -25,7 +25,7 @@ type RaftSurfstore struct {
 	grpcServer *grpc.Server
 
 	/*--------------- Chaos Monkey --------------*/
-	unreachableFrom map[int64]struct{}
+	unreachableFrom map[int64]bool
 	UnimplementedRaftSurfstoreServer
 }
 
@@ -81,7 +81,7 @@ func (s *RaftSurfstore) SendHeartbeat(ctx context.Context, _ *emptypb.Empty) (*S
 func (s *RaftSurfstore) MakeServerUnreachableFrom(ctx context.Context, servers *UnreachableFromServers) (*Success, error) {
 	s.raftStateMutex.Lock()
 	for _, serverId := range servers.ServerIds {
-		s.unreachableFrom[serverId] = struct{}{}
+		s.unreachableFrom[serverId] = true
 	}
 	log.Printf("Server %d is unreachable from", s.unreachableFrom)
 	s.raftStateMutex.Unlock()
@@ -104,7 +104,7 @@ func (s *RaftSurfstore) Restore(ctx context.Context, _ *emptypb.Empty) (*Success
 	s.serverStatusMutex.Unlock()
 
 	s.raftStateMutex.Lock()
-	s.unreachableFrom = make(map[int64]struct{})
+	s.unreachableFrom = make(map[int64]bool)
 	s.raftStateMutex.Unlock()
 
 	log.Printf("Server %d is restored to follower and reachable from all servers", s.id)

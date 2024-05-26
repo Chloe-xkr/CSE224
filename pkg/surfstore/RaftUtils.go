@@ -59,7 +59,7 @@ func NewRaftServer(id int64, config RaftConfig) (*RaftSurfstore, error) {
 		id:          id,
 		commitIndex: -1,
 
-		unreachableFrom: make(map[int64]struct{}),
+		unreachableFrom: make(map[int64]bool),
 		grpcServer:      grpc.NewServer(),
 		rpcConns:        conns,
 
