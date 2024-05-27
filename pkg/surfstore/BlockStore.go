@@ -13,7 +13,7 @@ type BlockStore struct {
 
 func (bs *BlockStore) GetBlock(ctx context.Context, blockHash *BlockHash) (*Block, error) {
 
-	return nil, nil
+	panic("todo")
 }
 
 func (bs *BlockStore) PutBlock(ctx context.Context, block *Block) (*Success, error) {
