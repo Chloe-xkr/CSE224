@@ -343,11 +343,11 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
     }
 
     // 2. Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
-    if input.PrevLogIndex >= 0 {
-        if len(s.log) <= int(input.PrevLogIndex) || (input.PrevLogIndex >= 0 && s.log[input.PrevLogIndex].Term != input.PrevLogTerm) {
-            return output, fmt.Errorf("log does not contain an entry at prevLogIndex or has wrong PrevLogTerm")
-        }
-    }
+    // if input.PrevLogIndex >= 0 {
+    //     if len(s.log) <= int(input.PrevLogIndex) || (input.PrevLogIndex >= 0 && s.log[input.PrevLogIndex].Term != input.PrevLogTerm) {
+    //         return output, fmt.Errorf("log does not contain an entry at prevLogIndex or has wrong PrevLogTerm")
+    //     }
+    // }
 
     // 3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry and all that follow it (§5.3)
     // s.log 123   -> 123      12345 -> 123
@@ -402,15 +402,15 @@ func (s *RaftSurfstore) SetLeader(ctx context.Context, _ *emptypb.Empty) (*Succe
     s.serverStatusMutex.RUnlock()
 
     s.serverStatusMutex.Lock()
-    defer s.serverStatusMutex.Unlock()
     s.serverStatus = ServerStatus_LEADER
     s.term++
-    entry := UpdateOperation{
+	s.serverStatusMutex.Unlock()
+    
+	s.raftStateMutex.Lock()
+	entry := UpdateOperation{
 		Term:         s.term,
 		FileMetaData: nil,
 	}
-	s.raftStateMutex.Lock()
-	
 	s.log = append(s.log, &entry)
 	targetIndex := int64(len(s.log) - 1)
 	s.raftStateMutex.Unlock()
