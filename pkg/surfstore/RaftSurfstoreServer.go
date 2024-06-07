@@ -221,7 +221,10 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 		for s.appliedIndex < s.commitIndex {
 			s.appliedIndex++
 			entry := s.log[s.appliedIndex]
-			s.metaStore.UpdateFile(ctx, entry.FileMetaData)
+			if entry.FileMetaData!=nil{
+				s.metaStore.UpdateFile(ctx, entry.FileMetaData)
+			}
+			
 		}
 		s.raftStateMutex.Unlock()
 
@@ -376,7 +379,9 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
     for s.appliedIndex < s.commitIndex {
         s.appliedIndex++
         entry := s.log[s.appliedIndex]
-        s.metaStore.UpdateFile(ctx, entry.FileMetaData)
+        if entry.FileMetaData!=nil{
+			s.metaStore.UpdateFile(ctx, entry.FileMetaData)
+		}
     }
 
     output.Success = true
@@ -422,7 +427,9 @@ func (s *RaftSurfstore) SetLeader(ctx context.Context, _ *emptypb.Empty) (*Succe
 		for s.appliedIndex < s.commitIndex {
 			s.appliedIndex++
 			entry := s.log[s.appliedIndex]
-			s.metaStore.UpdateFile(ctx, entry.FileMetaData)
+			if entry.FileMetaData!=nil{
+				s.metaStore.UpdateFile(ctx, entry.FileMetaData)
+			}
 		}
 		s.raftStateMutex.Unlock()
 	}
