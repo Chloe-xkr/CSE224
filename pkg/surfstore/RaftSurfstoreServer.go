@@ -190,6 +190,10 @@ func (s *RaftSurfstore) GetBlockStoreAddrs(ctx context.Context, empty *emptypb.E
 // }
 
 func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) (*Version, error) {
+	fmt.Println("UpdateFile s.commitIndex:", s.commitIndex)
+	for i, entry := range s.log {
+		fmt.Println(i, " term: ", entry.Term, " fileMetaData: ",entry.FileMetaData)
+	}
 	s.serverStatusMutex.RLock()
 	if s.serverStatus != ServerStatus_LEADER {
 		s.serverStatusMutex.RUnlock()
@@ -204,7 +208,7 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 		FileMetaData: filemeta,
 	}
 	s.log = append(s.log, newEntry)
-	targetIndex := int64(len(s.log) - 1)
+	targetIndex := s.commitIndex + 1
 	s.raftStateMutex.Unlock()
 
 	res := make(chan bool)
@@ -233,7 +237,10 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 		}
 		return version, nil
 	}
-
+	fmt.Println("After UpdateFiles.commitIndex:", s.commitIndex)
+	for i, entry := range s.log {
+		fmt.Println(i, " term: ", entry.Term, " fileMetaData: ",entry.FileMetaData)
+	}
 	return nil, fmt.Errorf("fail updating")
 }
 
@@ -272,7 +279,7 @@ func (s *RaftSurfstore) connectFollower(ctx context.Context, targetInd int64, co
 			Term: s.term,
 			PrevLogIndex: targetInd - 1,
 			PrevLogTerm:  -1,
-			Entries:      s.log[targetInd:],
+			Entries:      s.log[:targetInd+1],
 			LeaderCommit: s.commitIndex,
 		}
 		if AppendEntriesInput.PrevLogIndex >= 0 {
@@ -312,7 +319,10 @@ func (s *RaftSurfstore) connectFollower(ctx context.Context, targetInd int64, co
 func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInput) (*AppendEntryOutput, error) {
     s.raftStateMutex.Lock()
     defer s.raftStateMutex.Unlock()
-
+	// fmt.Println("AppenfEntries")
+	// for i, entry := range s.log {
+	// 	fmt.Println(i, " term: ", entry.Term, " fileMetaData: ",entry.FileMetaData)
+	// }
     output := &AppendEntryOutput{
         Term:         s.term,
         Success:      false,
@@ -352,28 +362,59 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
     // 3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry and all that follow it (§5.3)
     // s.log 123   -> 123      12345 -> 123
 	// input 2345 1-> 2345     123   -> []
+	
+	// for i, entry := range s.log {
+	// 	s.appliedIndex = int64(i - 1)
+    //     if int64(i) > input.PrevLogIndex {
+	// 		index := int64(i)-input.PrevLogIndex-1
+    //         if index < int64(len(input.Entries)) && entry.Term != input.Entries[index].Term {
+    //             s.log = s.log[:i]
+    //             break
+    //         }
+    //     }
+    // }
+
+    // // 4. Append any new entries not already in the log
+    // for i, entry := range input.Entries {
+    //     index := input.PrevLogIndex + 1 + int64(i)
+    //     if int(index) >= len(s.log) {
+    //         s.log = append(s.log, entry)
+    //     }
+    // }
+
+    // // 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
+    // if input.LeaderCommit > s.commitIndex {
+    //     s.commitIndex = min(input.LeaderCommit, int64(len(s.log)-1))
+    // }
 	for i, entry := range s.log {
 		s.appliedIndex = int64(i - 1)
-        if int64(i) > input.PrevLogIndex {
-            if i < len(input.Entries) && entry.Term != input.Entries[i].Term {
-                s.log = s.log[:i]
-                break
-            }
-        }
-    }
+		if i >= len(input.Entries) {
+			s.log = s.log[:i]
+			input.Entries = make([]*UpdateOperation, 0)
+			break
+		}
+		// 3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry and all that follow it (§5.3)
+		if entry != input.Entries[i] {
+			s.log = s.log[:i]
+			input.Entries = input.Entries[i:]
+			break
+		}
+		if i == len(s.log)-1 { //all match
+			input.Entries = input.Entries[len(s.log):]
+		}
+	}
 
-    // 4. Append any new entries not already in the log
+	// // 4. Append any new entries not already in the log
     for i, entry := range input.Entries {
         index := input.PrevLogIndex + 1 + int64(i)
         if int(index) >= len(s.log) {
             s.log = append(s.log, entry)
         }
     }
-
-    // 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
-    if input.LeaderCommit > s.commitIndex {
-        s.commitIndex = min(input.LeaderCommit, int64(len(s.log)-1))
-    }
+	// 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
+	if input.LeaderCommit > s.commitIndex {
+		s.commitIndex = min(input.LeaderCommit, int64(len(s.log)-1))
+	}
 
     // Apply to state machine
     for s.appliedIndex < s.commitIndex {
@@ -393,49 +434,58 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 
 
 func (s *RaftSurfstore) SetLeader(ctx context.Context, _ *emptypb.Empty) (*Success, error) {
-	fmt.Println("SetLeader")
+	
 	s.serverStatusMutex.RLock()
     if s.serverStatus == ServerStatus_CRASHED {
         s.serverStatusMutex.RUnlock()
         return &Success{Flag: false}, ErrServerCrashed
     }
     s.serverStatusMutex.RUnlock()
+	fmt.Println("SetLeaders.commitIndex:", s.commitIndex)
+	for i, entry := range s.log {
+		fmt.Println(i, " term: ", entry.Term, " fileMetaData: ",entry.FileMetaData)
+	}
 
     s.serverStatusMutex.Lock()
     s.serverStatus = ServerStatus_LEADER
     s.term++
 	s.serverStatusMutex.Unlock()
-    
-	s.raftStateMutex.Lock()
-	entry := UpdateOperation{
-		Term:         s.term,
-		FileMetaData: nil,
-	}
-	s.log = append(s.log, &entry)
-	targetIndex := int64(len(s.log) - 1)
-	s.raftStateMutex.Unlock()
 
-	res := make(chan bool)
-	s.wailList = append(s.wailList, &res)
-
-	go s.waitResponses(ctx, targetIndex, len(s.wailList)-1)
-
-	finished := <- res
-	if finished {
+    if len(s.log) == 0 || s.log[len(s.log)-1].Term < s.term {
+		
 		s.raftStateMutex.Lock()
-		s.commitIndex = targetIndex
-		for s.appliedIndex < s.commitIndex {
-			s.appliedIndex++
-			entry := s.log[s.appliedIndex]
-			if entry.FileMetaData!=nil{
-				s.metaStore.UpdateFile(ctx, entry.FileMetaData)
-			}
+		entry := UpdateOperation{
+			Term:         s.term,
+			FileMetaData: nil,
 		}
+		s.log = append(s.log, &entry)
+		targetIndex := s.commitIndex + 1
 		s.raftStateMutex.Unlock()
+
+		res := make(chan bool)
+		s.wailList = append(s.wailList, &res)
+
+		go s.waitResponses(ctx, targetIndex, len(s.wailList)-1)
+
+		finished := <- res
+		if finished {
+			s.raftStateMutex.Lock()
+			s.commitIndex = targetIndex
+			for s.appliedIndex < s.commitIndex {
+				s.appliedIndex++
+				entry := s.log[s.appliedIndex]
+				if entry.FileMetaData!=nil{
+					s.metaStore.UpdateFile(ctx, entry.FileMetaData)
+				}
+			}
+			s.raftStateMutex.Unlock()
+		}
+		fmt.Println("set new leader:", s.id)
 	}
-
-
-    fmt.Println("set new leader:", s.id)
+	fmt.Println("After SetLeaders.commitIndex:", s.commitIndex)
+	for i, entry := range s.log {
+		fmt.Println(i, " term: ", entry.Term, " fileMetaData: ",entry.FileMetaData)
+	}
 
     return &Success{Flag: true}, nil
 }
