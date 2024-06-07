@@ -207,14 +207,14 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 	targetIndex := int64(len(s.log) - 1)
 	s.raftStateMutex.Unlock()
 
-	affair := make(chan bool)
-	s.wailList = append(s.wailList, &affair)
+	res := make(chan bool)
+	s.wailList = append(s.wailList, &res)
 
 	// Send the new entry to all followers in parallel
 	go s.waitResponses(ctx, targetIndex, len(s.wailList)-1)
 
 	// Update commitIndex and apply the entry to the state machine
-	finished := <-affair
+	finished := <- res
 
 	if finished {
 		s.raftStateMutex.Lock()
@@ -400,7 +400,34 @@ func (s *RaftSurfstore) SetLeader(ctx context.Context, _ *emptypb.Empty) (*Succe
     defer s.serverStatusMutex.Unlock()
     s.serverStatus = ServerStatus_LEADER
     s.term++
-    
+    entry := UpdateOperation{
+		Term:         s.term,
+		FileMetaData: nil,
+	}
+	s.raftStateMutex.Lock()
+	
+	s.log = append(s.log, &entry)
+	targetIndex := int64(len(s.log) - 1)
+	s.raftStateMutex.Unlock()
+
+	res := make(chan bool)
+	s.wailList = append(s.wailList, &res)
+
+	go s.waitResponses(ctx, targetIndex, len(s.wailList)-1)
+
+	finished := <- res
+	if finished {
+		s.raftStateMutex.Lock()
+		s.commitIndex = targetIndex
+		for s.appliedIndex < s.commitIndex {
+			s.appliedIndex++
+			entry := s.log[s.appliedIndex]
+			s.metaStore.UpdateFile(ctx, entry.FileMetaData)
+		}
+		s.raftStateMutex.Unlock()
+	}
+
+
     fmt.Println("set new leader:", s.id)
 
     return &Success{Flag: true}, nil
