@@ -3,6 +3,7 @@ package main
 import (
 	"cse224/proj5/pkg/surfstore"
 	"flag"
+
 	"io"
 	"log"
 )
@@ -25,7 +26,9 @@ func main() {
 }
 
 func startServer(id int64, config surfstore.RaftConfig) error {
+
 	raftServer, err := surfstore.NewRaftServer(id, config)
+
 	if err != nil {
 		log.Fatal("Error creating servers")
 	}

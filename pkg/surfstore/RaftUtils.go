@@ -7,7 +7,8 @@ import (
 	"log"
 	"os"
 	"sync"
-
+	"net"
+	"fmt"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -39,6 +40,7 @@ func NewRaftServer(id int64, config RaftConfig) (*RaftSurfstore, error) {
 	// TODO Any initialization you need here
 	conns := make([]*grpc.ClientConn, 0)
 	for _, addr := range config.RaftAddrs {
+		// fmt.Println(addr)
 		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return nil, err
@@ -58,6 +60,7 @@ func NewRaftServer(id int64, config RaftConfig) (*RaftSurfstore, error) {
 
 		id:          id,
 		commitIndex: -1,
+		appliedIndex: -1,
 
 		unreachableFrom: make(map[int64]bool),
 		grpcServer:      grpc.NewServer(),
@@ -71,5 +74,15 @@ func NewRaftServer(id int64, config RaftConfig) (*RaftSurfstore, error) {
 
 // TODO Start up the Raft server and any services here
 func ServeRaftServer(server *RaftSurfstore) error {
-	panic("todo")
+	fmt.Println(server.rpcConns[server.id].Target())
+	listener, err := net.Listen("tcp", server.rpcConns[server.id].Target())
+
+	if err != nil {
+		return fmt.Errorf("Fail listening: %v", err.Error())
+	}
+	// fmt.Println("2222")
+	grpcServer := grpc.NewServer()
+	RegisterRaftSurfstoreServer(grpcServer, server)
+	err = grpcServer.Serve(listener)
+	return err
 }

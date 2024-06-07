@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cse224/proj5/pkg/surfstore"
 	"flag"
 	"fmt"
 	"io"
@@ -42,16 +43,15 @@ func main() {
 
 	// Use tail arguments to hold BlockStore address
 	args := flag.Args()
-	blockStoreAddrs := []string{}
-	if len(args) >= 1 {
-		blockStoreAddrs = args
-	}
+	blockStoreAddrs :=  args
+	// fmt.Println(blockStoreAddrs)
 
 	// Valid service type argument
 	if _, ok := SERVICE_TYPES[strings.ToLower(*service)]; !ok {
 		flag.Usage()
 		os.Exit(EX_USAGE)
 	}
+	// fmt.Println("2")
 
 	// Add localhost if necessary
 	addr := ""
@@ -59,32 +59,42 @@ func main() {
 		addr += "localhost"
 	}
 	addr += ":" + strconv.Itoa(*port)
-
+	// fmt.Println("3")
 	// Disable log outputs if debug flag is missing
 	if !(*debug) {
 		log.SetFlags(0)
 		log.SetOutput(io.Discard)
 	}
 
+	// fmt.Println("4")
 	log.Fatal(startServer(addr, strings.ToLower(*service), blockStoreAddrs))
 }
 
-func startServer(hostAddr string, serviceType string, blockStoreAddrs []string) error {
-	// Create a new Server
+func startServer(hostAddr string, serviceType string, blockStoreAddrs [] string) error {
+	// fmt.Println("5")
+	// fmt.Println(hostAddr)
+	listener, err := net.Listen("tcp", hostAddr)
+	if err != nil {
+		return fmt.Errorf("error: Listening Socket %v", err)
+	}
+	
 	grpcServer := grpc.NewServer()
-
-	// Register rpc services
-	if serviceType != "block" {
-		panic("todo")
+	// allocate and register
+	if serviceType == "meta" || serviceType == "both" {
+		fmt.Println("meta beginning")
+		MetaStore := surfstore.NewMetaStore(blockStoreAddrs)
+		surfstore.RegisterMetaStoreServer(grpcServer, MetaStore)
+	}
+	if serviceType == "block" || serviceType == "both" {
+		fmt.Println("block beginning")
+		BlockStore := surfstore.NewBlockStore(blockStoreAddrs)
+		surfstore.RegisterBlockStoreServer(grpcServer, BlockStore)
 	}
 
-	if serviceType != "meta" {
-		panic("todo")
+	err = grpcServer.Serve(listener)
+	if err != nil {
+		return fmt.Errorf("failed to serve grpc  %v", err)
 	}
 
-	l, e := net.Listen("tcp", hostAddr)
-	if e != nil {
-		return e
-	}
-	return grpcServer.Serve(l)
+	return nil
 }
