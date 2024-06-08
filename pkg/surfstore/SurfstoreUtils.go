@@ -13,10 +13,10 @@ func ClientSync(client RPCClient) {
 	// local index.db
 	LocalIndexDB, err := LoadMetaFromMetaFile(client.BaseDir)
 	if err != nil {
-		fmt.Println("Fail loading data from meta file", err.Error())
+		// fmt.Println("Fail loading data from meta file", err.Error())
 		os.Exit(1)
 	}
-	fmt.Printf("Sync\n")
+	// fmt.Printf("Sync\n")
 	// if (LocalIndexDB == nil) {
 	// 	fmt.Println("LocalIndexDB is nil")
 	// }
@@ -25,7 +25,7 @@ func ClientSync(client RPCClient) {
 	// scan the base directory, and for each file, compute that file’s hash list.
 	files, err := os.ReadDir(client.BaseDir)
 	if err != nil {
-		fmt.Println("Fail reading directory ", err.Error())
+		// fmt.Println("Fail reading directory ", err.Error())
 		os.Exit(1)
 	}
 	existingFiles := make([]string, 0)
@@ -37,7 +37,7 @@ func ClientSync(client RPCClient) {
 		existingFiles = append(existingFiles, file.Name())
 		fileData, err := os.Open(client.BaseDir + "/" + file.Name())
 		if err != nil {
-			fmt.Println("Fail opening file " + file.Name())
+			// fmt.Println("Fail opening file " + file.Name())
 			os.Exit(1)
 		}
 		empty_flag := true
@@ -73,13 +73,13 @@ func ClientSync(client RPCClient) {
 			// add file to local index.db
 			indexMetaData := &FileMetaData{Filename: file.Name(), Version: 1, BlockHashList: currentBlockHashList} 
 			LocalIndexDB[file.Name()] = indexMetaData
-			fmt.Println("Added ",file.Name(), " to index.db." )
+			// fmt.Println("Added ",file.Name(), " to index.db." )
 		} else if !equalStringSlices(indexBlockHashList.BlockHashList, currentBlockHashList) {
-			fmt.Println("block changed")
+			// fmt.Println("block changed")
 			// some block changed
 			LocalIndexDB[file.Name()].Version += 1
 			LocalIndexDB[file.Name()].BlockHashList = currentBlockHashList
-			fmt.Println("Updated ",file.Name(), " to index.db." )
+			// fmt.Println("Updated ",file.Name(), " to index.db." )
 		}
 	}
 	PrintMetaMap(LocalIndexDB)
