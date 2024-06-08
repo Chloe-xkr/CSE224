@@ -81,9 +81,11 @@ func NewRaftServer(id int64, config RaftConfig) (*RaftSurfstore, error) {
 func (s *RaftSurfstore) sendPersistentHeartbeats(ctx context.Context, reqId int64) {
 	fmt.Println("sendPersistentHeartbeats")
 	numServers := len(s.peers)
+	fmt.Println("numServers = ",numServers)
 	peerResponses := make(chan bool, numServers-1)
 
 	for idx := range s.peers {
+		fmt.Println("idx = ",idx)
 		entriesToSend := s.log
 		idx := int64(idx)
 
@@ -100,7 +102,11 @@ func (s *RaftSurfstore) sendPersistentHeartbeats(ctx context.Context, reqId int6
 		}
 		s.raftStateMutex.RLock()
 		nextIndex := s.commitIndex + 1
-		entriesToSend = s.log[nextIndex:]
+		if int64(len(s.log)) > nextIndex {
+			entriesToSend = s.log[nextIndex:]
+		} else {
+			entriesToSend = make([]*UpdateOperation, 0)
+		}
 		s.raftStateMutex.RUnlock()
 
 
@@ -110,7 +116,9 @@ func (s *RaftSurfstore) sendPersistentHeartbeats(ctx context.Context, reqId int6
 	totalResponses := 1
 	numAliveServers := 1
 	for totalResponses < numServers {
+		fmt.Println("response := <-peerResponses, ",totalResponses)
 		response := <-peerResponses
+		fmt.Println("after response := <-peerResponses, ",totalResponses)
 		totalResponses += 1
 		if response {
 			numAliveServers += 1
@@ -125,13 +133,16 @@ func (s *RaftSurfstore) sendPersistentHeartbeats(ctx context.Context, reqId int6
 		s.raftStateMutex.RUnlock()
 
 		if reqId >= 0 && reqId < requestLen {
-			fmt.Println("*s.pendingRequests[reqId] <- PendingRequest{success: true, err: nil}, ",reqId)
 			s.raftStateMutex.Lock()
+			fmt.Println("s.pendingRequests[reqId] <- true, ",reqId)
 			*s.pendingRequests[reqId] <- PendingRequest{success: true, err: nil}
 			s.pendingRequests = append(s.pendingRequests[:reqId], s.pendingRequests[reqId+1:]...)
 			s.raftStateMutex.Unlock()
 		}
 		fmt.Println("end numAliveServers > numServers/2")
+	} else {
+		fmt.Println("numAliveServers < numServers/2")
+
 	}
 }
 
@@ -152,9 +163,13 @@ func (s *RaftSurfstore) sendToFollower(ctx context.Context, peerId int64, entrie
 		appendEntriesInput.PrevLogTerm = s.log[appendEntriesInput.PrevLogIndex].Term
 	}
 	s.raftStateMutex.RUnlock()
+	fmt.Println("EntriesInput:LeaderId ",appendEntriesInput.LeaderId," PrevLogTerm ",appendEntriesInput.PrevLogTerm," PrevLogIndex ",appendEntriesInput.PrevLogIndex, " LeaderCommit ", appendEntriesInput.LeaderCommit, " eln entries ", len(appendEntriesInput.Entries))
+	for i,entry:= range appendEntriesInput.Entries {
+		fmt.Println(i, " term ",entry.Term, " filemeta ", entry.FileMetaData)
+	}
 
-	reply, err := client.AppendEntries(ctx, &appendEntriesInput)
-	fmt.Println("Server", s.id, ": Receiving output:", "Term", reply.Term, "Id", reply.ServerId, "Success", reply.Success, "Matched Index", reply.MatchedIndex)
+	_, err := client.AppendEntries(ctx, &appendEntriesInput)
+	// fmt.Println("Server", s.id, ": Receiving output:", "Term", reply.Term, "Id", reply.ServerId, "Success", reply.Success, "Matched Index", reply.MatchedIndex)
 	if err != nil {
 		fmt.Println("peerResponses <- false")
 		peerResponses <- false

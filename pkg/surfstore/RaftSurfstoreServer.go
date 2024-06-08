@@ -115,7 +115,7 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 	go s.sendPersistentHeartbeats(ctx, int64(reqId))
 
 	fmt.Println("response := <-pendingReq, ", reqId)
-	response := <-pendingReq
+	response := <- pendingReq
 	fmt.Println("continue UpdateFile response: ", response.success)
 	if response.err != nil {
 		return nil, response.err
@@ -175,7 +175,7 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 // 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index
 // of last new entry)
 func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInput) (*AppendEntryOutput, error) {
-	fmt.Println("AppendEntries")
+	fmt.Println("AppendEntries, ",s.id)
 	//check the status
 	s.raftStateMutex.RLock()
 	peerTerm := s.term
@@ -183,6 +183,7 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 	s.raftStateMutex.RUnlock()
 	success := true
 	if peerTerm < input.Term {
+		fmt.Println("peerTerm", peerTerm," < input.Term,", input.Term)
 		s.serverStatusMutex.Lock()
 		s.serverStatus = ServerStatus_FOLLOWER
 		s.serverStatusMutex.Unlock()
@@ -201,16 +202,20 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 		Success:      success,
 		MatchedIndex: -1,
 	}
+	fmt.Println("AppendEntries1111, ",s.id)
 
 	s.serverStatusMutex.RLock()
 	isCrashed := s.serverStatus == ServerStatus_CRASHED
 	s.serverStatusMutex.RUnlock()
 	if isCrashed {
+		fmt.Println("AppendEntries isCrashed , ",s.id)
 		return output, ErrServerCrashed
 	}
 	if s.unreachableFrom[input.LeaderId] {
+		fmt.Println("AppendEntries unreachableFrom , ",s.id)
 		return output, ErrServerCrashedUnreachable
 	}
+	fmt.Println("AppendEntries22222, ",s.id)
 
 	//TODO: Change this per algorithm
 	s.raftStateMutex.Lock()
@@ -219,6 +224,7 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 	if input.Term < s.term {
 		return output, fmt.Errorf("term < currentTerm")
 	}
+	fmt.Println("AppendEntries33333, ",s.id)
 
 	// 2. Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
 	if input.PrevLogIndex >= 0 {
@@ -227,6 +233,7 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 	    }
 	}
 
+	fmt.Println("AppendEntries4444, ",s.id)
 	// 3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry and all that follow it (§5.3)
 	for i, entry := range s.log {
 		if int64(i) > input.PrevLogIndex {
@@ -238,6 +245,7 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 			}
 		}
 	}
+	fmt.Println("AppendEntries55555, ",s.id)
 
 	// 4. Append any new entries not already in the log
 	for i, entry := range input.Entries {
@@ -247,6 +255,7 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 		} 
 	}
 
+	fmt.Println("AppendEntries66666, ",s.id)
 	// 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
 	if input.LeaderCommit > s.commitIndex {
 		s.commitIndex = min(input.LeaderCommit, int64(len(s.log)-1))
