@@ -3,7 +3,7 @@ package surfstore
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
+	// "fmt"
 	"sort"
 )
 
@@ -15,10 +15,10 @@ func (c ConsistentHashRing) GetResponsibleServer(blockId string) string {
 
 	hashes := make([]string, 0)
 	for h := range c.ServerMap {
-		fmt.Printf("%v ",h)
+		// fmt.Printf("%v ",h)
 		hashes = append(hashes, h)
 	}
-	fmt.Println()
+	// fmt.Println()
 
 	sort.Strings(hashes)
 	for _, hashKey := range hashes {

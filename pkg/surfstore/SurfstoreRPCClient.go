@@ -2,7 +2,7 @@ package surfstore
 
 import (
 	context "context"
-	"fmt"
+	// "fmt"
 	"time"
 
 	grpc "google.golang.org/grpc"
@@ -42,14 +42,14 @@ func (surfClient *RPCClient) GetBlock(blockHash string, blockStoreAddr string, b
 
 func (surfClient *RPCClient) PutBlock(block *Block, blockStoreAddr string, succ *bool) error {
 	// connect to the server
-	fmt.Println("PutBlock connect to the server:" , blockStoreAddr)
+	// fmt.Println("PutBlock connect to the server:" , blockStoreAddr)
 	conn, err := grpc.Dial(blockStoreAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	c := NewBlockStoreClient(conn)
-	fmt.Println("PutBlock connected")
+	// fmt.Println("PutBlock connected")
 	// perform the call
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -124,7 +124,7 @@ func (surfClient *RPCClient) UpdateFile(fileMetaData *FileMetaData, latestVersio
 		defer cancel()
 		response, err := c.UpdateFile(ctx, fileMetaData)
 		if err != nil {
-			fmt.Println("Error in UpdateFile after connection: ", err.Error())
+			// fmt.Println("Error in UpdateFile after connection: ", err.Error())
 			conn.Close()
 			continue
 		}

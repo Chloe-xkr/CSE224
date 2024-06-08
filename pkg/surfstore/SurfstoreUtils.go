@@ -9,7 +9,7 @@ import (
 
 // Implement the logic for a client syncing with the server here.
 func ClientSync(client RPCClient) {
-	fmt.Print(client.BaseDir)
+	// fmt.Print(client.BaseDir)
 	// local index.db
 	LocalIndexDB, err := LoadMetaFromMetaFile(client.BaseDir)
 	if err != nil {
@@ -21,7 +21,7 @@ func ClientSync(client RPCClient) {
 	// 	fmt.Println("LocalIndexDB is nil")
 	// }
 	// fmt.Println(LocalIndexDB)
-	PrintMetaMap(LocalIndexDB)
+	// PrintMetaMap(LocalIndexDB)
 	// scan the base directory, and for each file, compute that file’s hash list.
 	files, err := os.ReadDir(client.BaseDir)
 	if err != nil {
@@ -30,7 +30,7 @@ func ClientSync(client RPCClient) {
 	}
 	existingFiles := make([]string, 0)
 	for _, file := range files{
-		fmt.Printf("%s\n", file.Name())
+		// fmt.Printf("%s\n", file.Name())
 		if file.Name() == DEFAULT_META_FILENAME || file.IsDir() {
 			continue
 		}
@@ -51,7 +51,7 @@ func ClientSync(client RPCClient) {
 				if err == io.EOF || err == io.ErrUnexpectedEOF {
 					break
 				}
-				fmt.Println("Fail reading file " + file.Name() + "with error" + err.Error())
+				// fmt.Println("Fail reading file " + file.Name() + "with error" + err.Error())
 				os.Exit(1)
 			}
 			if n_bytes == 0 {
@@ -82,7 +82,7 @@ func ClientSync(client RPCClient) {
 			// fmt.Println("Updated ",file.Name(), " to index.db." )
 		}
 	}
-	PrintMetaMap(LocalIndexDB)
+	// PrintMetaMap(LocalIndexDB)
 	// handel deleted files
 	for fn, metadata := range LocalIndexDB {
 		if !Contains(existingFiles, fn) {
@@ -269,7 +269,7 @@ func upload(client RPCClient, localMetaData *FileMetaData, addrs []string) (erro
 			localMetaData.Version = latestVersion
 			return nil
 		} else {
-			fmt.Println("Fail opening file " + localMetaData.Filename)
+			// fmt.Println("Fail opening file " + localMetaData.Filename)
 			os.Exit(1)
 		}
 	}
@@ -284,11 +284,11 @@ func upload(client RPCClient, localMetaData *FileMetaData, addrs []string) (erro
 	// fmt.Println("333333")
 	for _, hash := range localBlockList {
 		addr, err := getBlockServerAddress(hash, addrs, blockStoreMap)
-		fmt.Println(addr)
+		// fmt.Println(addr)
 		if err != nil {
 			return err
 		}
-		fmt.Println(hash)    
+		// fmt.Println(hash)    
 		blockData := make([]byte, client.BlockSize)
 		n, err := file.Read(blockData)
 		if err != nil {

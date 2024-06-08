@@ -79,7 +79,7 @@ func NewRaftServer(id int64, config RaftConfig) (*RaftSurfstore, error) {
 
 
 func (s *RaftSurfstore) sendPersistentHeartbeats(ctx context.Context, reqId int64) {
-	// fmt.Println("sendPersistentHeartbeats")
+	fmt.Println("sendPersistentHeartbeats")
 	numServers := len(s.peers)
 	// fmt.Println("numServers = ",numServers)
 	peerResponses := make(chan bool, numServers-1)
@@ -100,14 +100,14 @@ func (s *RaftSurfstore) sendPersistentHeartbeats(ctx context.Context, reqId int6
 		// for i, log := range s.log{
 		// 	fmt.Println("i: ", i," log: ", log.Term, " ", log.FileMetaData)
 		// }
-		s.raftStateMutex.RLock()
-		nextIndex := s.commitIndex + 1
-		if int64(len(s.log)) > nextIndex {
-			entriesToSend = s.log[nextIndex:]
-		} else {
-			entriesToSend = make([]*UpdateOperation, 0)
-		}
-		s.raftStateMutex.RUnlock()
+		// s.raftStateMutex.RLock()
+		// nextIndex := s.commitIndex + 1
+		// if int64(len(s.log)) > nextIndex {
+		// 	entriesToSend = s.log[nextIndex:]
+		// } else {
+		// 	entriesToSend = make([]*UpdateOperation, 0)
+		// }
+		// s.raftStateMutex.RUnlock()
 
 
 		go s.sendToFollower(ctx, idx, entriesToSend, peerResponses)
@@ -116,9 +116,9 @@ func (s *RaftSurfstore) sendPersistentHeartbeats(ctx context.Context, reqId int6
 	totalResponses := 1
 	numAliveServers := 1
 	for totalResponses < numServers {
-		// fmt.Println("response := <-peerResponses, ",totalResponses)
+		fmt.Println("response := <-peerResponses, ",totalResponses)
 		response := <-peerResponses
-		// fmt.Println("after response := <-peerResponses, ",totalResponses)
+		fmt.Println("after response := <-peerResponses, ",totalResponses)
 		totalResponses += 1
 		if response {
 			numAliveServers += 1
@@ -140,14 +140,12 @@ func (s *RaftSurfstore) sendPersistentHeartbeats(ctx context.Context, reqId int6
 			s.raftStateMutex.Unlock()
 		}
 		// fmt.Println("end numAliveServers > numServers/2")
-	} else {
-		// fmt.Println("numAliveServers < numServers/2")
+	} 
 
-	}
 }
 
 func (s *RaftSurfstore) sendToFollower(ctx context.Context, peerId int64, entries []*UpdateOperation, peerResponses chan<- bool) {
-	// fmt.Println("sendToFollower")
+	fmt.Println("sendToFollower ")
 	client := NewRaftSurfstoreClient(s.rpcConns[peerId])
 
 	s.raftStateMutex.RLock()
@@ -155,21 +153,19 @@ func (s *RaftSurfstore) sendToFollower(ctx context.Context, peerId int64, entrie
 		Term:         s.term,
 		LeaderId:     s.id,
 		PrevLogTerm:  0,
-		PrevLogIndex: s.commitIndex,
+		PrevLogIndex: -1,
 		Entries:      entries,
 		LeaderCommit: s.commitIndex,
 	}
-	if appendEntriesInput.PrevLogIndex >= 0 {
-		appendEntriesInput.PrevLogTerm = s.log[appendEntriesInput.PrevLogIndex].Term
-	}
-	s.raftStateMutex.RUnlock()
-	// fmt.Println("EntriesInput:LeaderId ",appendEntriesInput.LeaderId," PrevLogTerm ",appendEntriesInput.PrevLogTerm," PrevLogIndex ",appendEntriesInput.PrevLogIndex, " LeaderCommit ", appendEntriesInput.LeaderCommit, " eln entries ", len(appendEntriesInput.Entries))
-	// for i,entry:= range appendEntriesInput.Entries {
-	// 	fmt.Println(i, " term ",entry.Term, " filemeta ", entry.FileMetaData)
+	// if appendEntriesInput.PrevLogIndex >= 0 {
+	// 	appendEntriesInput.PrevLogTerm = s.log[appendEntriesInput.PrevLogIndex].Term
 	// }
+	s.raftStateMutex.RUnlock()
+	
 
 	_, err := client.AppendEntries(ctx, &appendEntriesInput)
 	// fmt.Println("Server", s.id, ": Receiving output:", "Term", reply.Term, "Id", reply.ServerId, "Success", reply.Success, "Matched Index", reply.MatchedIndex)
+
 	if err != nil {
 		// fmt.Println("peerResponses <- false")
 		peerResponses <- false
