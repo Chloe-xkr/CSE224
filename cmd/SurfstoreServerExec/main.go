@@ -81,12 +81,12 @@ func startServer(hostAddr string, serviceType string, blockStoreAddrs [] string)
 	grpcServer := grpc.NewServer()
 	// allocate and register
 	if serviceType == "meta" || serviceType == "both" {
-		fmt.Println("meta beginning")
+		// fmt.Println("meta beginning")
 		MetaStore := surfstore.NewMetaStore(blockStoreAddrs)
 		surfstore.RegisterMetaStoreServer(grpcServer, MetaStore)
 	}
 	if serviceType == "block" || serviceType == "both" {
-		fmt.Println("block beginning")
+		// fmt.Println("block beginning")
 		BlockStore := surfstore.NewBlockStore(blockStoreAddrs)
 		surfstore.RegisterBlockStoreServer(grpcServer, BlockStore)
 	}

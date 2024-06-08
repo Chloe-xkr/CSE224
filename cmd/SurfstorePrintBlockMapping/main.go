@@ -97,5 +97,5 @@ func PrintBlocksOnEachServer(client surfstore.RPCClient) {
 	} else {
 		result = result[:len(result)-1] + "}"
 	}
-	fmt.Println(result)
+	// fmt.Println(result)
 }

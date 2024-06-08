@@ -79,13 +79,13 @@ func NewRaftServer(id int64, config RaftConfig) (*RaftSurfstore, error) {
 
 
 func (s *RaftSurfstore) sendPersistentHeartbeats(ctx context.Context, reqId int64) {
-	fmt.Println("sendPersistentHeartbeats")
+	// fmt.Println("sendPersistentHeartbeats")
 	numServers := len(s.peers)
-	fmt.Println("numServers = ",numServers)
+	// fmt.Println("numServers = ",numServers)
 	peerResponses := make(chan bool, numServers-1)
 
 	for idx := range s.peers {
-		fmt.Println("idx = ",idx)
+		// fmt.Println("idx = ",idx)
 		entriesToSend := s.log
 		idx := int64(idx)
 
@@ -94,12 +94,12 @@ func (s *RaftSurfstore) sendPersistentHeartbeats(ctx context.Context, reqId int6
 		}
 
 		//TODO: Utilize next index
-		fmt.Println("s.log length = ", len(s.log))
+		// fmt.Println("s.log length = ", len(s.log))
 		// fmt.Println("s.lastApplied = ", s.lastApplied)
-		fmt.Println("s.commitIndex = ", s.commitIndex)
-		for i, log := range s.log{
-			fmt.Println("i: ", i," log: ", log.Term, " ", log.FileMetaData)
-		}
+		// fmt.Println("s.commitIndex = ", s.commitIndex)
+		// for i, log := range s.log{
+		// 	fmt.Println("i: ", i," log: ", log.Term, " ", log.FileMetaData)
+		// }
 		s.raftStateMutex.RLock()
 		nextIndex := s.commitIndex + 1
 		if int64(len(s.log)) > nextIndex {
@@ -116,9 +116,9 @@ func (s *RaftSurfstore) sendPersistentHeartbeats(ctx context.Context, reqId int6
 	totalResponses := 1
 	numAliveServers := 1
 	for totalResponses < numServers {
-		fmt.Println("response := <-peerResponses, ",totalResponses)
+		// fmt.Println("response := <-peerResponses, ",totalResponses)
 		response := <-peerResponses
-		fmt.Println("after response := <-peerResponses, ",totalResponses)
+		// fmt.Println("after response := <-peerResponses, ",totalResponses)
 		totalResponses += 1
 		if response {
 			numAliveServers += 1
@@ -126,7 +126,7 @@ func (s *RaftSurfstore) sendPersistentHeartbeats(ctx context.Context, reqId int6
 	}
 
 	if numAliveServers > numServers/2 {
-		fmt.Println("numAliveServers > numServers/2")
+		// fmt.Println("numAliveServers > numServers/2")
 		s.raftStateMutex.RLock()
 
 		requestLen := int64(len(s.pendingRequests))
@@ -134,20 +134,20 @@ func (s *RaftSurfstore) sendPersistentHeartbeats(ctx context.Context, reqId int6
 
 		if reqId >= 0 && reqId < requestLen {
 			s.raftStateMutex.Lock()
-			fmt.Println("s.pendingRequests[reqId] <- true, ",reqId)
+			// fmt.Println("s.pendingRequests[reqId] <- true, ",reqId)
 			*s.pendingRequests[reqId] <- PendingRequest{success: true, err: nil}
 			s.pendingRequests = append(s.pendingRequests[:reqId], s.pendingRequests[reqId+1:]...)
 			s.raftStateMutex.Unlock()
 		}
-		fmt.Println("end numAliveServers > numServers/2")
+		// fmt.Println("end numAliveServers > numServers/2")
 	} else {
-		fmt.Println("numAliveServers < numServers/2")
+		// fmt.Println("numAliveServers < numServers/2")
 
 	}
 }
 
 func (s *RaftSurfstore) sendToFollower(ctx context.Context, peerId int64, entries []*UpdateOperation, peerResponses chan<- bool) {
-	fmt.Println("sendToFollower")
+	// fmt.Println("sendToFollower")
 	client := NewRaftSurfstoreClient(s.rpcConns[peerId])
 
 	s.raftStateMutex.RLock()
@@ -163,18 +163,18 @@ func (s *RaftSurfstore) sendToFollower(ctx context.Context, peerId int64, entrie
 		appendEntriesInput.PrevLogTerm = s.log[appendEntriesInput.PrevLogIndex].Term
 	}
 	s.raftStateMutex.RUnlock()
-	fmt.Println("EntriesInput:LeaderId ",appendEntriesInput.LeaderId," PrevLogTerm ",appendEntriesInput.PrevLogTerm," PrevLogIndex ",appendEntriesInput.PrevLogIndex, " LeaderCommit ", appendEntriesInput.LeaderCommit, " eln entries ", len(appendEntriesInput.Entries))
-	for i,entry:= range appendEntriesInput.Entries {
-		fmt.Println(i, " term ",entry.Term, " filemeta ", entry.FileMetaData)
-	}
+	// fmt.Println("EntriesInput:LeaderId ",appendEntriesInput.LeaderId," PrevLogTerm ",appendEntriesInput.PrevLogTerm," PrevLogIndex ",appendEntriesInput.PrevLogIndex, " LeaderCommit ", appendEntriesInput.LeaderCommit, " eln entries ", len(appendEntriesInput.Entries))
+	// for i,entry:= range appendEntriesInput.Entries {
+	// 	fmt.Println(i, " term ",entry.Term, " filemeta ", entry.FileMetaData)
+	// }
 
 	_, err := client.AppendEntries(ctx, &appendEntriesInput)
 	// fmt.Println("Server", s.id, ": Receiving output:", "Term", reply.Term, "Id", reply.ServerId, "Success", reply.Success, "Matched Index", reply.MatchedIndex)
 	if err != nil {
-		fmt.Println("peerResponses <- false")
+		// fmt.Println("peerResponses <- false")
 		peerResponses <- false
 	} else {
-		fmt.Println("peerResponses <- true")
+		// fmt.Println("peerResponses <- true")
 		peerResponses <- true
 	}
 

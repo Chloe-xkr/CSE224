@@ -98,14 +98,14 @@ func ClientSync(client RPCClient) {
 	remoteFileInfoMap := make(map[string]*FileMetaData)
 	err = client.GetFileInfoMap(&remoteFileInfoMap)
 	if err != nil {
-		fmt.Println("Fail getting remote index info", err.Error())
+		// fmt.Println("Fail getting remote index info", err.Error())
 		os.Exit(1)
 	}
 	var addrs []string
 	err = client.GetBlockStoreAddrs(&addrs)
 	// fmt.Println("Adrress: ",addr)
 	if err != nil {
-		fmt.Println("Error getting remote block store addrs", err.Error())
+		// fmt.Println("Error getting remote block store addrs", err.Error())
 		os.Exit(1)
 	}
 
@@ -115,23 +115,23 @@ func ClientSync(client RPCClient) {
 	for filename, remoteMetaData := range remoteFileInfoMap {
 		// existingRemoteFiles = append(existingRemoteFiles, filename)
 		if localMetaData, exist := LocalIndexDB[filename]; exist {  //exist
-			fmt.Println("exist when download")
+			// fmt.Println("exist when download")
 			if localMetaData.Version < remoteMetaData.Version {
 				err := download(client, remoteMetaData, localMetaData, addrs)
 				if err != nil {
-					fmt.Println("Fail download existing file:", err.Error())
+					// fmt.Println("Fail download existing file:", err.Error())
 					os.Exit(1)
 				}
 			}
 		} else {
-			fmt.Println("not exist when download")
+			// fmt.Println("not exist when download")
 			// new file -> index+download
 
 			localMetaData = &FileMetaData{}  
 			err = download(client, remoteMetaData, localMetaData, addrs)
 			LocalIndexDB[filename] = localMetaData
 			if err != nil {
-				fmt.Println("Fail download inexisting file:", err.Error(), "// filename: ", filename)
+				// fmt.Println("Fail download inexisting file:", err.Error(), "// filename: ", filename)
 				os.Exit(1)
 			}
 		}
@@ -144,26 +144,26 @@ func ClientSync(client RPCClient) {
 
 		remoteMetaData, exist := remoteFileInfoMap[filename]
 		if exist {  //exist
-			fmt.Println("exist when upload, local version ", localMetaData.Version, " reomote version, ",remoteMetaData.Version)
+			// fmt.Println("exist when upload, local version ", localMetaData.Version, " reomote version, ",remoteMetaData.Version)
 			if localMetaData.Version == remoteMetaData.Version + 1 {
 				err := upload(client, localMetaData, addrs)
 				if err != nil {
-					fmt.Println("Fail uploading existing file:", err.Error())
+					// fmt.Println("Fail uploading existing file:", err.Error())
 					os.Exit(1)
 				}
 			} else if localMetaData.Version <= remoteMetaData.Version {
 				err := download(client,remoteMetaData, localMetaData, addrs)
 				if err != nil {
-					fmt.Println("Fail downloading existing file:", err.Error())
+					// fmt.Println("Fail downloading existing file:", err.Error())
 					os.Exit(1)
 				}
 			}
 		} else {
-			fmt.Println("not exist when upload")
+			// fmt.Println("not exist when upload")
 			// new file -> index+download
 			err = upload(client, localMetaData, addrs)
 			if err != nil {
-				fmt.Println("Fail uploading inexisting file:", err.Error())
+				// fmt.Println("Fail uploading inexisting file:", err.Error())
 				os.Exit(1)
 			}
 			// var block Block
@@ -178,14 +178,14 @@ func ClientSync(client RPCClient) {
 	// filename -> hashlist -> blockAddr
 	// download the blocks
 	//  upload the blocks
-	fmt.Println("Writng index.db")
+	// fmt.Println("Writng index.db")
 
 	err = WriteMetaFile(LocalIndexDB, client.BaseDir)
 	if err != nil {
-		fmt.Println("Error WriteMetaFile: ", err.Error())
+		// fmt.Println("Error WriteMetaFile: ", err.Error())
 		os.Exit(1)
 	}
-	fmt.Println("Writng finished")
+	// fmt.Println("Writng finished")
 }
 func getBlockServerAddress (block string, addrs []string, blockStoreMap map[string][]string) (addr string, err error){
 	for server := range blockStoreMap {
@@ -202,10 +202,10 @@ func download (client RPCClient, remoteMetaData *FileMetaData, localMetaData *Fi
 	
 	*localMetaData = *remoteMetaData
 	path := ConcatPath(client.BaseDir, remoteMetaData.Filename)
-	fmt.Println(path)
+	// fmt.Println(path)
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
-		fmt.Println("1111111 ")
+		// fmt.Println("1111111 ")
 		return err
 	}
 	// download blocks
@@ -230,7 +230,7 @@ func download (client RPCClient, remoteMetaData *FileMetaData, localMetaData *Fi
 		}
 		if !Contains(localBlockList, hash) {
 			var block Block
-			fmt.Println("hash: ",hash)
+			// fmt.Println("hash: ",hash)
 			err := client.GetBlock(hash, addr, &block)
 
 			if err != nil {
