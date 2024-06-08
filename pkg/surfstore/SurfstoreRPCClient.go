@@ -85,11 +85,9 @@ func (surfClient *RPCClient) MissingBlocks(blockHashesIn []string, blockStoreAdd
 
 func (surfClient *RPCClient) GetFileInfoMap(serverFileInfoMap *map[string]*FileMetaData) error {
 	for _, metaStoreAddr := range surfClient.MetaStoreAddrs {
-		// fmt.Println("metaStoreAddr ", metaStoreAddr)
 		conn, err := grpc.Dial(metaStoreAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			// fmt.Println("Fail in GetFileInfoMap: ",err.Error())
-			continue
+			return err
 		}
 		defer conn.Close()
 		c := NewRaftSurfstoreClient(conn)
@@ -117,15 +115,13 @@ func (surfClient *RPCClient) UpdateFile(fileMetaData *FileMetaData, latestVersio
 	for _, metaStoreAddr := range surfClient.MetaStoreAddrs {
 		conn, err := grpc.Dial(metaStoreAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			continue
+			return err
 		}
-		defer conn.Close()
 		c := NewRaftSurfstoreClient(conn)
 	
 		// perform the call
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-	
 		response, err := c.UpdateFile(ctx, fileMetaData)
 		if err != nil {
 			fmt.Println("Error in UpdateFile after connection: ", err.Error())
@@ -133,8 +129,8 @@ func (surfClient *RPCClient) UpdateFile(fileMetaData *FileMetaData, latestVersio
 			continue
 		}
 		*latestVersion = response.Version
-	
-		return nil
+
+		return conn.Close()
 	}
 	return ErrNotLeader
 	
